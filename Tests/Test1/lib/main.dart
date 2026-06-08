@@ -47,9 +47,10 @@ class _MessengerHomePageState extends State<MessengerHomePage> {
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _selectedIndex,
-        height: 72,
+        height: 68,
         backgroundColor: Colors.white,
-        indicatorColor: const Color(0xFFE6F2FF),
+        indicatorColor: const Color(0xFFE7F1FF),
+        labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
         onDestinationSelected: (index) {
           setState(() {
             _selectedIndex = index;
@@ -210,7 +211,7 @@ class ChatScreen extends StatelessWidget {
         const SliverToBoxAdapter(
           child: Padding(
             padding: EdgeInsets.fromLTRB(20, 16, 20, 10),
-            child: ScreenHeader(title: 'Chats'),
+            child: ScreenHeader(title: 'Chats', showChatActions: true),
           ),
         ),
         const SliverToBoxAdapter(
@@ -221,7 +222,7 @@ class ChatScreen extends StatelessWidget {
         ),
         SliverToBoxAdapter(
           child: SizedBox(
-            height: 118,
+            height: 140,
             child: ListView.separated(
               padding: const EdgeInsets.fromLTRB(20, 18, 20, 10),
               scrollDirection: Axis.horizontal,
@@ -255,8 +256,21 @@ class PeopleScreen extends StatelessWidget {
       slivers: [
         const SliverToBoxAdapter(
           child: Padding(
-            padding: EdgeInsets.fromLTRB(20, 16, 20, 12),
+            padding: EdgeInsets.fromLTRB(20, 16, 20, 10),
             child: ScreenHeader(title: 'People'),
+          ),
+        ),
+        const SliverToBoxAdapter(
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(20, 0, 20, 12),
+            child: Text(
+              'Active friends',
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF65676B),
+              ),
+            ),
           ),
         ),
         SliverList.separated(
@@ -278,9 +292,14 @@ class PeopleScreen extends StatelessWidget {
 }
 
 class ScreenHeader extends StatelessWidget {
-  const ScreenHeader({super.key, required this.title});
+  const ScreenHeader({
+    super.key,
+    required this.title,
+    this.showChatActions = false,
+  });
 
   final String title;
+  final bool showChatActions;
 
   @override
   Widget build(BuildContext context) {
@@ -304,12 +323,50 @@ class ScreenHeader extends StatelessWidget {
             ),
           ),
         ),
-        IconButton.filledTonal(
+        if (showChatActions) ...[
+          HeaderIconButton(
+            icon: Icons.camera_alt,
+            tooltip: 'Camera',
+            onPressed: () {},
+          ),
+          const SizedBox(width: 8),
+        ],
+        HeaderIconButton(
+          icon: showChatActions ? Icons.edit : Icons.person_add,
+          tooltip: showChatActions ? 'New message' : 'Add friend',
           onPressed: () {},
-          icon: const Icon(Icons.edit),
-          tooltip: 'New message',
         ),
       ],
+    );
+  }
+}
+
+class HeaderIconButton extends StatelessWidget {
+  const HeaderIconButton({
+    super.key,
+    required this.icon,
+    required this.tooltip,
+    required this.onPressed,
+  });
+
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox.square(
+      dimension: 40,
+      child: IconButton(
+        onPressed: onPressed,
+        icon: Icon(icon, size: 21),
+        tooltip: tooltip,
+        style: IconButton.styleFrom(
+          backgroundColor: const Color(0xFFF0F2F5),
+          foregroundColor: const Color(0xFF111111),
+          padding: EdgeInsets.zero,
+        ),
+      ),
     );
   }
 }
@@ -322,8 +379,8 @@ class SearchField extends StatelessWidget {
     return Container(
       height: 46,
       decoration: BoxDecoration(
-        color: const Color(0xFFF0F2F5),
-        borderRadius: BorderRadius.circular(24),
+        color: const Color(0xFFF3F4F6),
+        borderRadius: BorderRadius.circular(16),
       ),
       child: const Row(
         children: [
@@ -331,7 +388,7 @@ class SearchField extends StatelessWidget {
           Icon(Icons.search, color: Color(0xFF7A7F87)),
           SizedBox(width: 8),
           Text(
-            'Search',
+            'Search Messenger',
             style: TextStyle(
               color: Color(0xFF6E737B),
               fontSize: 17,
@@ -365,7 +422,7 @@ class SuggestedContactCard extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             contact.name,
-            maxLines: 1,
+            maxLines: 2,
             overflow: TextOverflow.ellipsis,
             textAlign: TextAlign.center,
             style: const TextStyle(
@@ -412,7 +469,18 @@ class ChatListTile extends StatelessWidget {
         overflow: TextOverflow.ellipsis,
         style: const TextStyle(fontSize: 14, color: Color(0xFF65676B)),
       ),
-      trailing: const Icon(Icons.chevron_right, color: Color(0xFFBCC0C4)),
+      trailing: contact.isOnline
+          ? const SizedBox(
+              width: 10,
+              height: 10,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: Color(0xFF0084FF),
+                  shape: BoxShape.circle,
+                ),
+              ),
+            )
+          : const Icon(Icons.check_circle, size: 18, color: Color(0xFFBCC0C4)),
     );
   }
 }
