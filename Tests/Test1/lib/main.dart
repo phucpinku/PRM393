@@ -201,11 +201,50 @@ const List<Contact> peopleContacts = [
   ),
 ];
 
-class ChatScreen extends StatelessWidget {
+class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
 
   @override
+  State<ChatScreen> createState() => _ChatScreenState();
+}
+
+class _ChatScreenState extends State<ChatScreen> {
+  final TextEditingController _searchController = TextEditingController();
+  String _query = '';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  List<Contact> get _filteredSuggestions {
+    return _filterContacts(suggestedContacts);
+  }
+
+  List<Contact> get _filteredChats {
+    return _filterContacts(recentChats);
+  }
+
+  List<Contact> _filterContacts(List<Contact> contacts) {
+    final normalizedQuery = _query.trim().toLowerCase();
+    if (normalizedQuery.isEmpty) {
+      return contacts;
+    }
+
+    return contacts.where((contact) {
+      final name = contact.name.toLowerCase();
+      final message = contact.lastMessage?.toLowerCase() ?? '';
+      return name.contains(normalizedQuery) ||
+          message.contains(normalizedQuery);
+    }).toList();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final filteredSuggestions = _filteredSuggestions;
+    final filteredChats = _filteredChats;
+
     return CustomScrollView(
       slivers: [
         const SliverToBoxAdapter(
@@ -214,33 +253,61 @@ class ChatScreen extends StatelessWidget {
             child: ScreenHeader(title: 'Chats', showChatActions: true),
           ),
         ),
-        const SliverToBoxAdapter(
-          child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: 20),
-            child: SearchField(),
-          ),
-        ),
         SliverToBoxAdapter(
-          child: SizedBox(
-            height: 140,
-            child: ListView.separated(
-              padding: const EdgeInsets.fromLTRB(20, 18, 20, 10),
-              scrollDirection: Axis.horizontal,
-              itemBuilder: (context, index) {
-                return SuggestedContactCard(contact: suggestedContacts[index]);
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: SearchField(
+              controller: _searchController,
+              onChanged: (value) {
+                setState(() {
+                  _query = value;
+                });
               },
-              separatorBuilder: (context, index) => const SizedBox(width: 16),
-              itemCount: suggestedContacts.length,
+              onClear: () {
+                _searchController.clear();
+                setState(() {
+                  _query = '';
+                });
+              },
             ),
           ),
         ),
-        SliverList.separated(
-          itemBuilder: (context, index) {
-            return ChatListTile(contact: recentChats[index]);
-          },
-          separatorBuilder: (context, index) => const SizedBox(height: 2),
-          itemCount: recentChats.length,
-        ),
+        if (filteredSuggestions.isNotEmpty)
+          SliverToBoxAdapter(
+            child: SizedBox(
+              height: 140,
+              child: ListView.separated(
+                padding: const EdgeInsets.fromLTRB(20, 18, 20, 10),
+                scrollDirection: Axis.horizontal,
+                itemBuilder: (context, index) {
+                  return SuggestedContactCard(
+                    key: ValueKey(
+                      'suggestion-${filteredSuggestions[index].name}',
+                    ),
+                    contact: filteredSuggestions[index],
+                  );
+                },
+                separatorBuilder: (context, index) => const SizedBox(width: 16),
+                itemCount: filteredSuggestions.length,
+              ),
+            ),
+          ),
+        if (filteredChats.isEmpty)
+          const SliverFillRemaining(
+            hasScrollBody: false,
+            child: EmptySearchResult(),
+          )
+        else
+          SliverList.separated(
+            itemBuilder: (context, index) {
+              return ChatListTile(
+                key: ValueKey('chat-${filteredChats[index].name}'),
+                contact: filteredChats[index],
+              );
+            },
+            separatorBuilder: (context, index) => const SizedBox(height: 2),
+            itemCount: filteredChats.length,
+          ),
         const SliverToBoxAdapter(child: SizedBox(height: 12)),
       ],
     );
@@ -275,7 +342,10 @@ class PeopleScreen extends StatelessWidget {
         ),
         SliverList.separated(
           itemBuilder: (context, index) {
-            return PeopleListTile(contact: peopleContacts[index]);
+            return PeopleListTile(
+              key: ValueKey('person-${peopleContacts[index].name}'),
+              contact: peopleContacts[index],
+            );
           },
           separatorBuilder: (context, index) => const Divider(
             indent: 88,
@@ -372,30 +442,68 @@ class HeaderIconButton extends StatelessWidget {
 }
 
 class SearchField extends StatelessWidget {
-  const SearchField({super.key});
+  const SearchField({
+    super.key,
+    required this.controller,
+    required this.onChanged,
+    required this.onClear,
+  });
+
+  final TextEditingController controller;
+  final ValueChanged<String> onChanged;
+  final VoidCallback onClear;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 46,
-      decoration: BoxDecoration(
-        color: const Color(0xFFF3F4F6),
-        borderRadius: BorderRadius.circular(16),
+    return TextField(
+      controller: controller,
+      onChanged: onChanged,
+      textInputAction: TextInputAction.search,
+      decoration: InputDecoration(
+        hintText: 'Search Messenger',
+        hintStyle: const TextStyle(
+          color: Color(0xFF6E737B),
+          fontSize: 16,
+          fontWeight: FontWeight.w500,
+        ),
+        prefixIcon: const Icon(Icons.search, color: Color(0xFF7A7F87)),
+        suffixIcon: controller.text.isEmpty
+            ? null
+            : IconButton(
+                onPressed: onClear,
+                icon: const Icon(Icons.close, size: 20),
+                color: const Color(0xFF7A7F87),
+                tooltip: 'Clear search',
+              ),
+        filled: true,
+        fillColor: const Color(0xFFF3F4F6),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide.none,
+        ),
+        contentPadding: const EdgeInsets.symmetric(vertical: 12),
       ),
-      child: const Row(
-        children: [
-          SizedBox(width: 16),
-          Icon(Icons.search, color: Color(0xFF7A7F87)),
-          SizedBox(width: 8),
-          Text(
-            'Search Messenger',
-            style: TextStyle(
-              color: Color(0xFF6E737B),
-              fontSize: 17,
-              fontWeight: FontWeight.w500,
-            ),
+    );
+  }
+}
+
+class EmptySearchResult extends StatelessWidget {
+  const EmptySearchResult({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const Center(
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: 32),
+        child: Text(
+          'No conversations found',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: Color(0xFF65676B),
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
           ),
-        ],
+        ),
       ),
     );
   }
@@ -549,11 +657,11 @@ class Avatar extends StatelessWidget {
           backgroundColor: color,
           child: ClipOval(
             child: Image.network(
+              key: ValueKey('$name-$imageUrl'),
               imageUrl,
               width: size,
               height: size,
               fit: BoxFit.cover,
-              webHtmlElementStrategy: WebHtmlElementStrategy.fallback,
               errorBuilder: (context, error, stackTrace) {
                 return Center(
                   child: Text(

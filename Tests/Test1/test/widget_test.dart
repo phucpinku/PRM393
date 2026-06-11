@@ -21,4 +21,23 @@ void main() {
     expect(find.text('Ngoc Anh'), findsWidgets);
     expect(find.text('Active now'), findsWidgets);
   });
+
+  testWidgets('filters chat list when typing in search', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(const MessengerCloneApp());
+
+    await tester.enterText(find.byType(TextField), 'Quan');
+    await tester.pump();
+
+    expect(find.text('Minh Quan'), findsWidgets);
+    expect(find.text('Ngoc Anh'), findsNothing);
+    expect(find.text('Gui minh file bai tap voi. - 10:42'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Clear search'));
+    await tester.pump();
+
+    expect(find.text('Ngoc Anh'), findsWidgets);
+    expect(find.text('Mai gap nhe! - 11:15'), findsOneWidget);
+  });
 }
